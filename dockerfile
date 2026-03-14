@@ -4,6 +4,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/root/.local/bin:$PATH"
+ENV GROQ_API_KEY=""
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -23,5 +24,7 @@ RUN poetry install --no-root --no-interaction --no-ansi
 # Copy application code
 COPY . .
 
-# Run JupyterLab instead of notebook
-CMD ["poetry", "run", "jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+EXPOSE 8000
+
+# Start FastAPI server via uvicorn
+CMD ["poetry", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -6,7 +6,7 @@ import json
 import ollama.client as client
 
 
-def extractConcepts(prompt: str, metadata={}, model="mistral-openorca:latest"):
+def extractConcepts(prompt: str, metadata={}, model="mistral-openorca:latest", llm_client=None):
     SYS_PROMPT = (
         "Your task is extract the key concepts (and non personal entities) mentioned in the given context. "
         "Extract only the most important and atomistic concepts, if  needed break the concepts down to the simpler concepts."
@@ -22,7 +22,10 @@ def extractConcepts(prompt: str, metadata={}, model="mistral-openorca:latest"):
         "{ }, \n"
         "]\n"
     )
-    response, _ = client.generate(model_name=model, system=SYS_PROMPT, prompt=prompt)
+    if llm_client is None:
+        from llm.ollama_client import OllamaClient
+        llm_client = OllamaClient()
+    response = llm_client.generate(model_name=model, system=SYS_PROMPT, prompt=prompt)
     try:
         result = json.loads(response)
         result = [dict(item, **metadata) for item in result]
@@ -32,7 +35,7 @@ def extractConcepts(prompt: str, metadata={}, model="mistral-openorca:latest"):
     return result
 
 
-def graphPrompt(input: str, metadata={}, model="mistral-openorca:latest"):
+def graphPrompt(input: str, metadata={}, model="mistral-openorca:latest", llm_client=None):
     if model == None:
         model = "mistral-openorca:latest"
 
@@ -63,7 +66,10 @@ def graphPrompt(input: str, metadata={}, model="mistral-openorca:latest"):
     )
 
     USER_PROMPT = f"context: ```{input}``` \n\n output: "
-    response, _ = client.generate(model_name=model, system=SYS_PROMPT, prompt=USER_PROMPT)
+    if llm_client is None:
+        from llm.ollama_client import OllamaClient
+        llm_client = OllamaClient()
+    response = llm_client.generate(model_name=model, system=SYS_PROMPT, prompt=USER_PROMPT)
     try:
         result = json.loads(response)
         result = [dict(item, **metadata) for item in result]

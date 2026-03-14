@@ -19,11 +19,11 @@ def documents2Dataframe(documents) -> pd.DataFrame:
     return df
 
 
-def df2ConceptsList(dataframe: pd.DataFrame) -> list:
+def df2ConceptsList(dataframe: pd.DataFrame, llm_client=None) -> list:
     # dataframe.reset_index(inplace=True)
     results = dataframe.apply(
         lambda row: extractConcepts(
-            row.text, {"chunk_id": row.chunk_id, "type": "concept"}
+            row.text, {"chunk_id": row.chunk_id, "type": "concept"}, llm_client=llm_client
         ),
         axis=1,
     )
@@ -47,10 +47,10 @@ def concepts2Df(concepts_list) -> pd.DataFrame:
     return concepts_dataframe
 
 
-def df2Graph(dataframe: pd.DataFrame, model=None) -> list:
+def df2Graph(dataframe: pd.DataFrame, model=None, llm_client=None) -> list:
     # dataframe.reset_index(inplace=True)
     results = dataframe.apply(
-        lambda row: graphPrompt(row.text, {"chunk_id": row.chunk_id}, model), axis=1
+        lambda row: graphPrompt(row.text, {"chunk_id": row.chunk_id}, model, llm_client=llm_client), axis=1
     )
     # invalid json results in NaN
     results = results.dropna()
