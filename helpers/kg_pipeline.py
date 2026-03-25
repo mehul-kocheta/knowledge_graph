@@ -126,18 +126,29 @@ def setup_vector_index(tx):
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 async def extract_from_image(image, page_number, previous_entities):
-    print(f"Processing page {page_number}...")
+    # Check API key
+    if not os.environ.get('GEMINI_API_KEY'):
+        print("CRITICAL: GEMINI_API_KEY environment variable is not set!")
+    
+    print(f"Processing page {page_number}... Image size: {image.size}, Mode: {image.mode}")
     
     formatted_prompt = PROMPT.replace(
         "{previous_entities}",
         json.dumps(previous_entities, indent=2) if previous_entities else "None"
     )
 
-    # Use the genai client
-    response = await client.aio.models.generate_content(
-        model='gemini-2.0-flash', # Using a stable model name
-        contents=[formatted_prompt, image]
-    )
+    try:
+        # Use the genai client
+        response = await client.aio.models.generate_content(
+            model='gemini-3-flash-preview', 
+            contents=[formatted_prompt, image]
+        )
+    except Exception as e:
+        print(f"GenAI Client Error for page {page_number}: {type(e).__name__}: {str(e)}")
+        # Check if it has internal details
+        if hasattr(e, 'response'):
+             print(f"Error Response: {getattr(e, 'response')}")
+        raise e
 
     text = response.text
     
