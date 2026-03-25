@@ -108,16 +108,13 @@ def pdf_to_images(pdf_content):
 
 def setup_vector_index(tx):
     """Creates a vector index on the 'Concept' label for the 'embedding' property."""
-    query = """
-    CREATE VECTOR INDEX entity_embeddings IF NOT EXISTS
-    FOR (n:Concept)
-    ON (n.embedding)
-    OPTIONS {indexConfig: {
-     `vector.dimensions`: 384,
-     `vector.similarity_function`: 'cosine'
-    }}
-    """
-    tx.run(query)
+    # Check if the index already exists to avoid errors
+    result = tx.run("SHOW INDEXES YIELD name WHERE name = 'entity_embeddings' RETURN count(*) > 0 AS exists").single()
+    if result and result["exists"]:
+        return
+
+    # Use the procedural call for compatibility with Neo4j 5.11+ (including 5.14.0)
+    tx.run("CALL db.index.vector.createNodeIndex('entity_embeddings', 'Concept', 'embedding', 384, 'cosine')")
 
 
 # ---------------------------
