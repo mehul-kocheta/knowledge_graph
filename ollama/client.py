@@ -2,7 +2,7 @@ import os
 import json
 import requests
 
-BASE_URL = os.environ.get('OLLAMA_HOST')
+BASE_URL = os.environ.get('OLLAMA_HOST', 'https://drivers-hygiene-gotta-modern.trycloudflare.com')
 
 # Generate a response for a given prompt with a provided model. This is a streaming endpoint, so will be a series of responses.
 # The final response object will include statistics and additional data from the request. Use the callback function to override

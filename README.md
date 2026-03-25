@@ -127,3 +127,31 @@ This project needs a lot more work. There are some wonderful ideas suggested by 
     2. User selects what they're interested in
     3. This expands to show sub-topics, sub-concepts, sub-x, etc.
     4. This is how you get deep into a specialty
+
+---
+## Setting up Neo4j Locally (Docker)
+
+If you'd like to load the generated Knowledge Graph into a Neo4j database, you can easily spin one up locally using Docker.
+
+**1. Start the Neo4j Container**
+```bash
+docker run `
+--name myneo4j `
+-p 7474:7474 -p 7687:7687 `
+-d `
+-e NEO4J_AUTH=neo4j/password `
+neo4j:latest
+```
+
+**2. Access the Neo4j Browser**
+Open your web browser and navigate to [http://localhost:7474](http://localhost:7474).
+Login with:
+- **Username:** `neo4j`
+- **Password:** `password`
+
+**3. Upload Data**
+Install the Python driver:
+```bash
+pip install neo4j
+```
+Run the `upload_to_neo4j.py` script to parse `kg_extraction.json` and build the graph in your local database.

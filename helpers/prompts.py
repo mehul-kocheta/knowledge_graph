@@ -1,79 +1,168 @@
 import sys
+import json
 from yachalk import chalk
+from groq import Groq
+import os
+
 sys.path.append("..")
 
-import json
-import ollama.client as client
+api_key = os.environ.get("GROQ_API_KEY")
+if not api_key:
+    raise ValueError("GROQ_API_KEY environment variable is not set.")
+llm_client = Groq(api_key=api_key)
 
+def extractConcepts(prompt: str, metadata={}, model="mixtral-8x7b-32768"):
 
-def extractConcepts(prompt: str, metadata={}, model="mistral-openorca:latest", llm_client=None):
-    SYS_PROMPT = (
-        "Your task is extract the key concepts (and non personal entities) mentioned in the given context. "
-        "Extract only the most important and atomistic concepts, if  needed break the concepts down to the simpler concepts."
-        "Categorize the concepts in one of the following categories: "
-        "[event, concept, place, object, document, organisation, condition, misc]\n"
-        "Format your output as a list of json with the following format:\n"
-        "[\n"
-        "   {\n"
-        '       "entity": The Concept,\n'
-        '       "importance": The concontextual importance of the concept on a scale of 1 to 5 (5 being the highest),\n'
-        '       "category": The Type of Concept,\n'
-        "   }, \n"
-        "{ }, \n"
-        "]\n"
-    )
-    if llm_client is None:
-        from llm.ollama_client import OllamaClient
-        llm_client = OllamaClient()
-    response = llm_client.generate(model_name=model, system=SYS_PROMPT, prompt=prompt)
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "record_concepts",
+                "description": "Extract the most important and atomistic concepts from the text.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "extracted_concepts": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "entity": {
+                                        "type": "string",
+                                        "description": "The Concept or entity extracted."
+                                    },
+                                    "importance": {
+                                        "type": "integer",
+                                        "description": "The contextual importance of the concept on a scale of 1 to 5 (5 being highest)."
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "enum": ["event", "concept", "place", "object", "document", "organisation", "condition", "misc"],
+                                        "description": "The type of concept."
+                                    }
+                                },
+                                "required": ["entity", "importance", "category"]
+                            }
+                        }
+                    },
+                    "required": ["extracted_concepts"]
+                }
+            }
+        }
+    ]
+
+    messages = [
+        {
+            "role": "system",
+            "content": "Your task is to extract the key concepts (and non-personal entities) mentioned in the given context. Extract only the most important and atomistic concepts, breaking them down into simpler concepts if needed."
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+
     try:
-        result = json.loads(response)
-        result = [dict(item, **metadata) for item in result]
-    except:
-        print("\n\nERROR ### Here is the buggy response: ", response, "\n\n")
-        result = None
-    return result
+        # Standard Groq API call for tool use
+        response = llm_client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=tools,
+            tool_choice={"type": "function", "function": {"name": "record_concepts"}}
+        )
+
+        tool_calls = response.choices[0].message.tool_calls
+        if tool_calls:
+            arguments = json.loads(tool_calls[0].function.arguments)
+            result = arguments.get("extracted_concepts", [])
+            
+            # Inject metadata
+            result = [dict(item, **metadata) for item in result]
+            return result
+        else:
+            print("\n\nERROR ### No tool calls returned.\n\n")
+            return None
+
+    except Exception as e:
+        print(f"\n\nERROR ### Failed during Groq generation or parsing: {e}\n\n")
+        return None
 
 
-def graphPrompt(input: str, metadata={}, model="mistral-openorca:latest", llm_client=None):
-    if model == None:
-        model = "mistral-openorca:latest"
+def graphPrompt(input: str, metadata={}, model="mixtral-8x7b-32768"):
 
-    # model_info = client.show(model_name=model)
-    # print( chalk.blue(model_info))
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "record_graph_edges",
+                "description": "Extract an ontology of terms and the relationships between them based on the context.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "edges": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "node_1": {
+                                        "type": "string",
+                                        "description": "A concept from the extracted ontology."
+                                    },
+                                    "node_2": {
+                                        "type": "string",
+                                        "description": "A related concept from the extracted ontology."
+                                    },
+                                    "edge": {
+                                        "type": "string",
+                                        "description": "The relationship between the two concepts, node_1 and node_2, in one or two sentences."
+                                    }
+                                },
+                                "required": ["node_1", "node_2", "edge"]
+                            }
+                        }
+                    },
+                    "required": ["edges"]
+                }
+            }
+        }
+    ]
 
     SYS_PROMPT = (
-        "You are a network graph maker who extracts terms and their relations from a given context. "
-        "You are provided with a context chunk (delimited by ```) Your task is to extract the ontology "
-        "of terms mentioned in the given context. These terms should represent the key concepts as per the context. \n"
-        "Thought 1: While traversing through each sentence, Think about the key terms mentioned in it.\n"
-            "\tTerms may include object, entity, location, organization, person, \n"
-            "\tcondition, acronym, documents, service, concept, etc.\n"
-            "\tTerms should be as atomistic as possible\n\n"
-        "Thought 2: Think about how these terms can have one on one relation with other terms.\n"
-            "\tTerms that are mentioned in the same sentence or the same paragraph are typically related to each other.\n"
-            "\tTerms can be related to many other terms\n\n"
-        "Thought 3: Find out the relation between each such related pair of terms. \n\n"
-        "Format your output as a list of json. Each element of the list contains a pair of terms"
-        "and the relation between them, like the follwing: \n"
-        "[\n"
-        "   {\n"
-        '       "node_1": "A concept from extracted ontology",\n'
-        '       "node_2": "A related concept from extracted ontology",\n'
-        '       "edge": "relationship between the two concepts, node_1 and node_2 in one or two sentences"\n'
-        "   }, {...}\n"
-        "]"
+        "You are a network graph maker who extracts terms and their relations from a given context.\n"
+        "Thought 1: While traversing through each sentence, think about the key terms mentioned in it.\n"
+        "Terms may include object, entity, location, organization, person, condition, acronym, documents, service, concept, etc.\n"
+        "Terms should be as atomistic as possible.\n\n"
+        "Thought 2: Think about how these terms can have a one-on-one relation with other terms.\n"
+        "Terms mentioned in the same sentence or paragraph are typically related.\n"
+        "Terms can be related to many other terms.\n\n"
+        "Thought 3: Find out the relation between each such related pair of terms and record them using the provided tool."
     )
 
-    USER_PROMPT = f"context: ```{input}``` \n\n output: "
-    if llm_client is None:
-        from llm.ollama_client import OllamaClient
-        llm_client = OllamaClient()
-    response = llm_client.generate(model_name=model, system=SYS_PROMPT, prompt=USER_PROMPT)
+    messages = [
+        {"role": "system", "content": SYS_PROMPT},
+        {"role": "user", "content": f"context: ```{input}```"}
+    ]
+
     try:
-        result = json.loads(response)
-        result = [dict(item, **metadata) for item in result]
-    except:
-        print("\n\nERROR ### Here is the buggy response: ", response, "\n\n")
-        result = None
-    return result
+        response = llm_client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=tools,
+            tool_choice={"type": "function", "function": {"name": "record_graph_edges"}}
+        )
+
+        tool_calls = response.choices[0].message.tool_calls
+        if tool_calls:
+            arguments = json.loads(tool_calls[0].function.arguments)
+            result = arguments.get("edges", [])
+            
+            # Inject metadata
+            result = [dict(item, **metadata) for item in result]
+            return result
+        else:
+            print("\n\nERROR ### No tool calls returned.\n\n")
+            return None
+
+    except Exception as e:
+        print(f"\n\nERROR ### Failed during Groq generation or parsing: {e}\n\n")
+        return None
