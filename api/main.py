@@ -65,15 +65,27 @@ async def background_process_pdf(pdf_url: str, neo4j_config: dict):
     Background task to download and process a PDF.
     """
     import httpx
+    import tempfile
+    import os
     async with httpx.AsyncClient() as client:
         try:
             print(f"Background: Downloading PDF from {pdf_url}...")
             response = await client.get(pdf_url, timeout=60.0)
             response.raise_for_status()
             pdf_content = response.content
-            print(f"Background: Processing PDF...")
-            await process_pdf_to_neo4j(pdf_content, pdf_url, neo4j_config)
-            print(f"Background: Successfully ingested {pdf_url} into Neo4j.")
+            
+            # Save to temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(pdf_content)
+                tmp_path = tmp.name
+
+            try:
+                print(f"Background: Processing PDF from {tmp_path}...")
+                await process_pdf_to_neo4j(tmp_path, pdf_url, neo4j_config)
+                print(f"Background: Successfully ingested {pdf_url} into Neo4j.")
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
         except Exception as e:
             print(f"Background Error processing {pdf_url}: {str(e)}")
 

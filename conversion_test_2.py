@@ -14,7 +14,7 @@ client = genai.Client()
 # ---------------------------
 
 GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
-PDF_PATH = r"C:\Users\mehul\Downloads\2407.00681v1.pdf"
+PDF_PATH = r"C:\Users\mehul\Downloads\BT R24 Regulations NIT ANP along with Annexure.pdf"
 
 # ---------------------------
 # HELPERS
@@ -142,6 +142,8 @@ async def extract_from_image(image, page_number, previous_entities):
         data = extract_json(text)
         if not data:
              data = {"raw_output": text, "entities": []}
+
+        print(data['entities'])
     except:
         data = {"raw_output": text, "entities": []}
 
