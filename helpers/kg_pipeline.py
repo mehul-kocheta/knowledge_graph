@@ -54,19 +54,20 @@ def clean_label(label):
 PROMPT = """
 You are an information extraction system.
 
-From the research paper page image extract:
+From the page image extract:
 
 1. Entities
 2. Relationships between entities
 
-Previously extracted entities from this paper (use these exactly as written for consistency if referring to the same concept):
+Previously extracted entities from this resource (use these exactly as written for consistency if referring to the same concept):
 {previous_entities}
 
 Ensure entities are not isolated but are connected to each other through relationships.
 
-Capture the formulas and equations if any.
+Make sure each entity is independant of the source and other entities for eg: A Complete formula, A table, A name, A concept, A place (not just reference of table/formula/equation)
+Each enitity should contain a meaningful info on it's own
 
-Ignore the references and bibliography parts, only extract things relevant to science.
+Ignore the references / bibliography / table of content / cover page parts, only extract things that are meaningfull, otherwise result empty json
 
 Return output in JSON format:
 
