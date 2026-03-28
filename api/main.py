@@ -1,8 +1,8 @@
 import io
 from fastapi import FastAPI, File, UploadFile, Query, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 
 from llm import get_client
 from helpers.df_helpers import documents2Dataframe, df2Graph, graph2Df
