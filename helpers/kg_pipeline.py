@@ -140,7 +140,7 @@ async def extract_from_image(image, page_number, previous_entities):
     try:
         # Use the genai client
         response = await client.aio.models.generate_content(
-            model='gemini-3-flash-preview', 
+            model='gemini-3-pro-preview', 
             contents=[formatted_prompt, image]
         )
     except Exception as e:
