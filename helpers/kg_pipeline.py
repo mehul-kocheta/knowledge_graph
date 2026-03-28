@@ -154,6 +154,8 @@ async def extract_from_image(image, page_number, previous_entities):
         data = extract_json(text)
         if not data:
              data = {"entities": [], "relationships": []}
+
+        print(data['entities'])
     except:
         data = {"entities": [], "relationships": []}
 
@@ -306,7 +308,7 @@ async def query_kg_by_vector(query_text, neo4j_config):
     # 1. Extract entities from query using a simple LLM call
     extract_prompt = f"Extract important entities from this search query: '{query_text}'. Return them as a JSON list of strings: ['entity1', 'entity2']"
     response = await client.aio.models.generate_content(
-        model='gemini-2.0-flash',
+        model='gemini-3-flash-preview',
         contents=[extract_prompt]
     )
     extracted_entities = extract_json(response.text)
