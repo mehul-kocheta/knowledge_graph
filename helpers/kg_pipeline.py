@@ -69,6 +69,8 @@ Each enitity should contain a meaningful info on it's own
 
 Ignore the references / bibliography / table of content / cover page parts, only extract things that are meaningfull, otherwise result empty json
 
+Only keep the things in the image, avoid info outside of the image, if there is no info in the image, return empty json
+
 Return output in JSON format:
 
 {{
