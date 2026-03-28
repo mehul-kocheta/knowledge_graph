@@ -120,7 +120,6 @@ def setup_vector_index(tx):
 # IMAGE → LLM
 # ---------------------------
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 async def extract_from_image(image, page_number, previous_entities):
     # Check API key
     if not os.environ.get('GEMINI_API_KEY'):
