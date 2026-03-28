@@ -54,33 +54,29 @@ def clean_label(label):
 PROMPT = """
 You are an information extraction system.
 
-From the page image extract:
+From the provided page image, extract:
+1. Entities (meaningful concepts, names, formulas, tabular data, or specific places)
+2. Relationships between these entities
 
-1. Entities
-2. Relationships between entities
-
-Previously extracted entities from this resource (use these exactly as written for consistency if referring to the same concept):
+Previously extracted entities from this document (use these exactly as written for consistency if referring to the same concept):
 {previous_entities}
 
-Ensure entities are not isolated but are connected to each other through relationships.
-
-Make sure each entity is independant of the source and other entities for eg: A Complete formula, A table, A name, A concept, A place (not just reference of table/formula/equation)
-Each enitity should contain a meaningful info on it's own
-
-Ignore the references / bibliography / table of content / cover page parts, only extract things that are meaningfull, otherwise result empty json
-
-Only keep the things in the image, avoid info outside of the image, if there is no info in the image, return empty json
+Guidelines:
+- Ensure entities are connected to each other through relationships where possible.
+- Each entity should contain meaningful information on its own.
+- Capture formulas, equations, or specialized terms if they are central to the content.
+- Ignore references, bibliographies, and document navigation elements like page numbers or headers.
+- IMPORTANT: Only extract information visible in the image. If no meaningful information is present, return an empty JSON.
 
 Return output in JSON format:
-
-{{
+{
   "entities": [
-    {{"name": "", "type": ""}}
+    {"name": "", "type": ""}
   ],
   "relationships": [
-    {{"source": "", "relation": "", "target": ""}}
+    {"source": "", "relation": "", "target": ""}
   ]
-}}
+}
 """
 
 # ---------------------------
@@ -237,8 +233,17 @@ async def process_pdf_to_neo4j(pdf_content, pdf_url, neo4j_config):
     entities_metadata = {} # name -> {"type": typ, "page_numbers": set, "pdf_url": url}
     relationships_with_meta = [] # list of dicts
 
+    # Create debug directory
+    os.makedirs("debug_images", exist_ok=True)
+    
     for i, img in enumerate(images):
         page_num = i + 1
+        
+        # Save image for debugging
+        debug_path = os.path.join("debug_images", f"page_{page_num}.png")
+        img.save(debug_path)
+        print(f"Saved debug image to {debug_path}")
+
         result = await extract_from_image(img, page_num, accumulated_entities)
         data = result["data"]
 
@@ -265,17 +270,10 @@ async def process_pdf_to_neo4j(pdf_content, pdf_url, neo4j_config):
                     "page_number": page_num,
                     "pdf_url": pdf_url
                 })
-                # Ensure source and target nodes exist in metadata if not explicitly mentioned
-                if s not in entities_metadata:
-                    entities_metadata[s] = {"type": "Unknown", "page_numbers": {page_num}, "pdf_url": pdf_url}
-                    accumulated_entities.append({"name": s, "type": "Unknown"})
-                else:
+                # Update page occurrence for existing entities found in relationships
+                if s in entities_metadata:
                     entities_metadata[s]["page_numbers"].add(page_num)
-                
-                if t not in entities_metadata:
-                    entities_metadata[t] = {"type": "Unknown", "page_numbers": {page_num}, "pdf_url": pdf_url}
-                    accumulated_entities.append({"name": t, "type": "Unknown"})
-                else:
+                if t in entities_metadata:
                     entities_metadata[t]["page_numbers"].add(page_num)
 
     # Generate embeddings for all unique entities
