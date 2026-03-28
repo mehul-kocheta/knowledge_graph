@@ -97,7 +97,7 @@ def pdf_to_images(pdf_content):
     images = []
     for page_num in range(len(doc)):
         page = doc.load_page(page_num)
-        pix = page.get_pixmap(dpi=300)
+        pix = page.get_pixmap(dpi=100)
         img = Image.open(io.BytesIO(pix.tobytes("png")))
         images.append(img)
     return images
