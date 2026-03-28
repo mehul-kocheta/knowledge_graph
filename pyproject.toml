@@ -28,7 +28,7 @@ google-genai = "^1.47.0"
 pillow = "^11.3.0"
 pymupdf = "^1.26.5"
 neo4j = "^5.14.1"
-tenacity = "^9.1.2"
+tenacity = "^8.5.0"
 sentence-transformers = "^2.2.2"
 torch = "^2.1.1"
 
