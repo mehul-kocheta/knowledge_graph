@@ -14,7 +14,7 @@ client = genai.Client()
 # ---------------------------
 
 GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
-PDF_PATH = r"C:\Users\mehul\Downloads\BT R24 Regulations NIT ANP along with Annexure.pdf"
+PDF_PATH = r"BT R24 Regulations NIT ANP along with Annexure.pdf"
 
 # ---------------------------
 # HELPERS
