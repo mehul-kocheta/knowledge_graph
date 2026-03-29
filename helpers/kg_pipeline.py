@@ -52,29 +52,39 @@ def clean_label(label):
 # ---------------------------
 
 PROMPT = """
-You are an information extraction system.
+### Role
+You are a structural analyst and information extraction system. Your goal is to decompose document images into autonomous, semantically-rich "Knowledge Units" rather than atomic words.
 
-From the provided page image, extract:
-1. Entities (meaningful concepts, names, formulas, tabular data, or specific places)
-2. Relationships between these entities
+### Task
+Extract distinct Entities and the Relationships between them. A "Knowledge Unit" is a chunk of text that retains its full meaning when read in isolation.
 
-Previously extracted entities from this document (use these exactly as written for consistency if referring to the same concept):
-{previous_entities}
+### Extraction Guidelines
+1.  **Prefer Chunks over Atoms:** Do not extract single words like "Gravity." Instead, extract the full descriptive unit: "Newton's Law of Universal Gravitation formula and its derivation."
+2.  **Autonomous Entities:** Every entity must be "self-contained." This includes:
+    * **Contextual Statements:** Complete sentences describing a specific fact or rule.
+    * **Technical Blocks:** Entire formulas (including variable definitions), code snippets, or full tabular rows.
+    * **Descriptive Clusters:** A heading combined with its immediate explanatory paragraph.
+3.  **Dynamic Typing:** Since types are not fixed, assign a 'type' based on the chunk's function (e.g., "Theorem," "Statistical_Observation," "Procedural_Step," "System_Requirement").
+4.  **Consistency:** Use these previously identified entities exactly if the content overlaps: {previous_entities}
 
-Guidelines:
-- Ensure entities are connected to each other through relationships where possible.
-- Each entity should contain meaningful information on its own.
-- Capture formulas, equations, or specialized terms if they are central to the content.
-- Ignore references, bibliographies, and document navigation elements like page numbers or headers.
-- IMPORTANT: Only extract information visible in the image. If no meaningful information is present, return an empty JSON.
+### Relationship Mapping
+Connect these chunks using active verbs that describe the flow of logic (e.g., "validates," "defines," "is_calculated_by," "provides_context_for").
 
-Return output in JSON format:
+### Output Format (Strict JSON)
 {
   "entities": [
-    {"name": "", "type": ""}
+    {
+      "name": "Full chunk text or concise summary of the block",
+      "type": "Functional category (e.g., Technical_Specification, Definition_Block)",
+      "metadata": "Briefly describe why this is a single unit"
+    }
   ],
   "relationships": [
-    {"source": "", "relation": "", "target": ""}
+    {
+      "source": "Exact 'name' of source entity",
+      "relation": "Descriptive verb",
+      "target": "Exact 'name' of target entity"
+    }
   ]
 }
 """
@@ -243,7 +253,12 @@ async def process_pdf_to_neo4j(pdf_content, pdf_url, neo4j_config):
         img.save(debug_path)
         print(f"Saved debug image to {debug_path}")
 
-        result = await extract_from_image(img, page_num, accumulated_entities)
+        if len(accumulated_entities) > 100:
+            given_entities = accumulated_entities[:100]
+        else:
+            given_entities = accumulated_entities
+            
+        result = await extract_from_image(img, page_num, given_entities)
         data = result["data"]
 
         # Track entities for LLM context and metadata
